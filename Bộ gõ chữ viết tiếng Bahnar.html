@@ -140,7 +140,8 @@ details summary{cursor:pointer;font-weight:600;color:var(--muted)}
       <span class="small muted">Chữ riêng của tiếng Bahnar</span>
       <button id="shift" class="small" aria-pressed="false">Chữ hoa</button>
     </div>
-    <div class="kbd" id="kbd"></div>
+    <div class="kbd" id="kbd" aria-label="Nguyên âm"></div>
+    <div class="kbd" id="kbd2" aria-label="Phụ âm ghép"></div>
   </section>
 
   <p class="small muted" style="margin:0">Mở bằng Google Chrome hoặc Microsoft Edge, máy cần có mạng để nhận dạng giọng nói. Chữ nhận dạng là bản nháp theo âm, bạn sửa lại cho đúng.</p>
@@ -187,7 +188,7 @@ function skel(s){let x=s.toLowerCase().replace(/đ/g,"d").replace(/ƀ/g,"b").nor
   return x.replace(/gi(?=[aeiouy])/g,"j").replace(/ngh/g,"ng").replace(/gh/g,"g").replace(/ph/g,"p").replace(/qu/g,"kw").replace(/c(?!h)/g,"k").replace(/q/g,"k").replace(/y/g,"i");}
 function lev(a,b,max){const n=a.length,m=b.length;if(Math.abs(n-m)>max)return max+1;let p=[...Array(m+1).keys()],c=new Array(m+1);
   for(let i=1;i<=n;i++){c[0]=i;let best=i;for(let j=1;j<=m;j++){c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));if(c[j]<best)best=c[j];}if(best>max)return max+1;[p,c]=[c,p];}return p[m];}
-const WORD=/[\p{L}\p{M}]+(?:[-'’][\p{L}\p{M}]+)*/gu;
+const WORD=/(?:['’](?=\p{L}))?[\p{L}\p{M}]+(?:[-'’][\p{L}\p{M}]+)*/gu; // giữ dấu ' đầu từ như 'bơ, 'dak
 const words=s=>s.normalize("NFC").match(WORD)||[];
 const grams=s=>{const p="^"+s+"$",g=new Set();for(let i=0;i<p.length-1;i++)g.add(p.slice(i,i+2));return g;};
 const Corpus={map:new Map(),entries:[],index:new Map(),counts:null,
@@ -265,9 +266,11 @@ $("#typed").addEventListener("input",saveTyped);
 $("#copyType").onclick=()=>copyText($("#typed").value);
 $("#dlText").onclick=()=>{const t=clean($("#typed").value);if(!t.trim()){toast("Khung gõ đang trống");return;}
   download("bahnar-"+stamp()+".txt",new Blob(["﻿"+t.replace(/\n/g,"\r\n")],{type:"text/plain;charset=utf-8"}));};
-const KEYS=["ă","â","ĕ","ê","ê̆","ĭ","ŏ","ô","ô̆","ơ","ơ̆","ŭ","ư","ư̆","đ","ƀ","̆"];let upper=false;
-function renderKbd(){const k=$("#kbd");k.innerHTML="";for(const c of KEYS){const b=document.createElement("button");const ch=upper&&c!=="̆"?c.toUpperCase():c;
-  b.textContent=c==="̆"?"◌̆":ch;b.title=c==="̆"?"Thêm dấu trăng vào chữ vừa gõ":"Chèn "+ch;b.onmousedown=e=>e.preventDefault();b.onclick=()=>insert(ch);k.append(b);}}
+const KEYS=["ă","â","ĕ","ê","ê̆","ĭ","ŏ","ô","ô̆","ơ","ơ̆","ŭ","ư","ư̆","̆"];
+const CONS=["'b","'d","'m","'n","'nh","'ng","'ph","hng","hnh","hn","hm","hl","ngl","ml","ph","br","dr","gr","kr","mr","pr"];let upper=false;
+const cap=c=>c.replace(/\p{L}/u,x=>x.toUpperCase()); // viết hoa chữ đầu: 'nh → 'Nh, hng → Hng
+function renderKbd(){for(const[id,list]of[["#kbd",KEYS],["#kbd2",CONS]]){const k=$(id);k.innerHTML="";for(const c of list){const b=document.createElement("button");const ch=upper&&c!=="̆"?cap(c):c;
+  b.textContent=c==="̆"?"◌̆":ch;b.title=c==="̆"?"Thêm dấu trăng vào chữ vừa gõ":"Chèn "+ch;b.onmousedown=e=>e.preventDefault();b.onclick=()=>insert(ch);k.append(b);}}}
 function insert(ch){const f=lastField||$("#typed");f.focus();const s=f.selectionStart??f.value.length,e=f.selectionEnd??s;
   const v=f.value.slice(0,s)+ch+f.value.slice(e),nv=v.normalize("NFC"),pos=s+ch.length-(v.length-nv.length);f.value=nv;f.setSelectionRange(pos,pos);if(f.id==="typed")saveTyped();}
 $("#shift").onclick=()=>{upper=!upper;$("#shift").setAttribute("aria-pressed",upper);$("#shift").classList.toggle("primary",upper);renderKbd();};
